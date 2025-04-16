@@ -20,3 +20,15 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.layout.WindowInsets
+
+class MainActivity : ComponentActivity() {
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        setContent {
+            // Force light theme for visibility
+            MaterialTheme(colorScheme = lightColorScheme()) {
+                ColorMakerApp()
+            }
+        }
+    }
+}
