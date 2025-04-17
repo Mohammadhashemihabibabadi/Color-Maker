@@ -1,4 +1,4 @@
-package com.example.colormaker
+package com.example.color
 
 import android.content.res.Configuration
 import android.os.Bundle
@@ -83,3 +83,68 @@ fun ColorMakerApp() {
                     .weight(2f)
                     .fillMaxHeight(),
                 verticalArrangement = Arrangement.SpaceBetween
+            ) {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Text("Adjust Colors (0 to 1.0)", style = MaterialTheme.typography.titleLarge)
+
+                    ColorControl("Red", red, {
+                        red = it
+                        if (redEnabled) redBackup = it
+                    }, redEnabled, {
+                        redEnabled = it
+                        red = if (it) redBackup else 0f
+                    }, context)
+
+                    ColorControl("Green", green, {
+                        green = it
+                        if (greenEnabled) greenBackup = it
+                    }, greenEnabled, {
+                        greenEnabled = it
+                        green = if (it) greenBackup else 0f
+                    }, context)
+
+                    ColorControl("Blue", blue, {
+                        blue = it
+                        if (blueEnabled) blueBackup = it
+                    }, blueEnabled, {
+                        blueEnabled = it
+                        blue = if (it) blueBackup else 0f
+                    }, context)
+                }
+
+                Button(
+                    onClick = {
+                        red = 1.0f; green = 1.0f; blue = 1.0f
+                        redBackup = 1.0f; greenBackup = 1.0f; blueBackup = 1.0f
+                        redEnabled = true; greenEnabled = true; blueEnabled = true
+                    },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("Reset")
+                }
+            }
+        }
+    } else {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(WindowInsets.systemBars.asPaddingValues())
+                .padding(16.dp)
+                .verticalScroll(rememberScrollState()),
+            verticalArrangement = Arrangement.SpaceBetween
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f)
+                    .padding(8.dp)
+                    .border(4.dp, Color.Black, shape = MaterialTheme.shapes.medium)
+                    .padding(4.dp)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(displayColor, shape = MaterialTheme.shapes.medium)
+                )
+            }
+
