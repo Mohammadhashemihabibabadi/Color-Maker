@@ -229,3 +229,21 @@ fun ColorControl(
                 modifier = Modifier.weight(1f)
             )
 
+            Spacer(modifier = Modifier.width(8.dp))
+
+            OutlinedTextField(
+                value = textState,
+                onValueChange = {
+                    textState = it
+                    val parsed = it.text.toFloatOrNull()
+                    if (parsed != null && parsed in 0f..1f) {
+                        onValueChange(parsed)
+                    } else if (parsed != null) {
+                        Toast.makeText(context, "Value must be 0.0 to 1.0", Toast.LENGTH_SHORT).show()
+                    }
+                },
+                enabled = enabled,
+                modifier = Modifier.width(80.dp),
+                singleLine = true,
+                label = { Text("Value") }
+            )
