@@ -193,7 +193,7 @@ fun ColorRow(
             modifier = Modifier.weight(1f),
             colors = SliderDefaults.colors(
                 activeTrackColor = trackColor,
-                inactiveTrackColor = trackColor.copy(alpha = 0.3f),
+                inactiveTrackColor = trackColor, // now matches solid color
                 thumbColor = trackColor
             )
         )
