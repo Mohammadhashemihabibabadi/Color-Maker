@@ -1,223 +1,164 @@
+// MainActivity.kt
 package com.example.newcolormaker
 
 import android.os.Bundle
-import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalConfiguration
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.unit.dp
-import java.util.*
+import androidx.activity.viewModels
+import androidx.datastore.preferences.preferencesDataStore
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.newcolormaker.ui.ColorMakerApp
+import com.example.newcolormaker.viewmodel.ColorViewModel
+import com.example.newcolormaker.viewmodel.ColorViewModelFactory
+
+val ComponentActivity.dataStore by preferencesDataStore(name = "color_prefs")
 
 class MainActivity : ComponentActivity() {
+    private val viewModel: ColorViewModel by viewModels {
+        ColorViewModelFactory(this, this.dataStore)
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
-            MaterialTheme {
-                ColorMakerApp()
+            ColorMakerApp(viewModel)
+        }
+    }
+}
+
+// ColorViewModel.kt
+package com.example.newcolormaker.viewmodel
+
+import android.content.Context
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.viewModelScope
+import androidx.lifecycle.SavedStateHandle
+import androidx.datastore.core.DataStore
+import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.preferences.core.floatPreferencesKey
+import androidx.datastore.preferences.core.booleanPreferencesKey
+import androidx.datastore.preferences.core.edit
+import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.launch
+
+class ColorViewModel(
+    private val state: SavedStateHandle,
+    private val dataStore: DataStore<Preferences>
+) : ViewModel() {
+
+    private val redKey = floatPreferencesKey("red")
+    private val greenKey = floatPreferencesKey("green")
+    private val blueKey = floatPreferencesKey("blue")
+    private val redActiveKey = booleanPreferencesKey("redActive")
+    private val greenActiveKey = booleanPreferencesKey("greenActive")
+    private val blueActiveKey = booleanPreferencesKey("blueActive")
+
+    val red = state.getStateFlow("red", 1f)
+    val green = state.getStateFlow("green", 1f)
+    val blue = state.getStateFlow("blue", 1f)
+    val redActive = state.getStateFlow("redActive", true)
+    val greenActive = state.getStateFlow("greenActive", true)
+    val blueActive = state.getStateFlow("blueActive", true)
+
+    init {
+        viewModelScope.launch {
+            dataStore.data.firstOrNull()?.let {
+                state["red"] = it[redKey] ?: 1f
+                state["green"] = it[greenKey] ?: 1f
+                state["blue"] = it[blueKey] ?: 1f
+                state["redActive"] = it[redActiveKey] ?: true
+                state["greenActive"] = it[greenActiveKey] ?: true
+                state["blueActive"] = it[blueActiveKey] ?: true
             }
         }
     }
-}
 
-@Composable
-fun ColorMakerApp() {
-    val config = LocalConfiguration.current
-
-    val red = remember { mutableFloatStateOf(1f) }
-    val green = remember { mutableFloatStateOf(1f) }
-    val blue = remember { mutableFloatStateOf(1f) }
-
-    val redActive = remember { mutableStateOf(true) }
-    val greenActive = remember { mutableStateOf(true) }
-    val blueActive = remember { mutableStateOf(true) }
-
-    val prevRed = remember { mutableFloatStateOf(1f) }
-    val prevGreen = remember { mutableFloatStateOf(1f) }
-    val prevBlue = remember { mutableFloatStateOf(1f) }
-
-    fun resetValues() {
-        red.floatValue = 1f; green.floatValue = 1f; blue.floatValue = 1f
-        prevRed.floatValue = 1f; prevGreen.floatValue = 1f; prevBlue.floatValue = 1f
-        redActive.value = true; greenActive.value = true; blueActive.value = true
+    fun updateColor(color: String, value: Float) {
+        state[color] = value
+        saveToDataStore()
     }
 
-    val displayRed = if (redActive.value) red.floatValue else 0f
-    val displayGreen = if (greenActive.value) green.floatValue else 0f
-    val displayBlue = if (blueActive.value) blue.floatValue else 0f
+    fun updateActive(color: String, value: Boolean) {
+        state[color] = value
+        saveToDataStore()
+    }
 
+    private fun saveToDataStore() {
+        viewModelScope.launch {
+            dataStore.edit { prefs ->
+                prefs[redKey] = red.value
+                prefs[greenKey] = green.value
+                prefs[blueKey] = blue.value
+                prefs[redActiveKey] = redActive.value
+                prefs[greenActiveKey] = greenActive.value
+                prefs[blueActiveKey] = blueActive.value
+            }
+        }
+    }
+
+    fun resetAll() {
+        state["red"] = 1f
+        state["green"] = 1f
+        state["blue"] = 1f
+        state["redActive"] = true
+        state["greenActive"] = true
+        state["blueActive"] = true
+        saveToDataStore()
+    }
+}
+
+class ColorViewModelFactory(
+    private val context: Context,
+    private val dataStore: DataStore<Preferences>
+) : ViewModelProvider.Factory {
+    override fun <T : ViewModel> create(modelClass: Class<T>): T {
+        return ColorViewModel(SavedStateHandle(), dataStore) as T
+    }
+}
+
+// ColorMakerApp.kt
+package com.example.newcolormaker.ui
+
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.example.newcolormaker.viewmodel.ColorViewModel
+import androidx.compose.foundation.layout.*
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.material3.*
+
+@Composable
+fun ColorMakerApp(viewModel: ColorViewModel) {
+    val config = LocalConfiguration.current
+    val red = viewModel.red.collectAsStateWithLifecycle().value
+    val green = viewModel.green.collectAsStateWithLifecycle().value
+    val blue = viewModel.blue.collectAsStateWithLifecycle().value
+    val redActive = viewModel.redActive.collectAsStateWithLifecycle().value
+    val greenActive = viewModel.greenActive.collectAsStateWithLifecycle().value
+    val blueActive = viewModel.blueActive.collectAsStateWithLifecycle().value
+
+    val displayRed = if (redActive) red else 0f
+    val displayGreen = if (greenActive) green else 0f
+    val displayBlue = if (blueActive) blue else 0f
     val backgroundColor = Color(displayRed, displayGreen, displayBlue)
-    val isLandscape = config.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
 
-    if (isLandscape) {
+    if (config.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE) {
         Row(modifier = Modifier.fillMaxSize()) {
-            ColorBox(backgroundColor, Modifier
-                .fillMaxHeight()
-                .fillMaxWidth(0.33f)
-                .padding(16.dp))
-            ColorControls(
-                red, green, blue,
-                redActive, greenActive, blueActive,
-                prevRed, prevGreen, prevBlue,
-                onReset = { resetValues() }
-            )
+            ColorBox(backgroundColor, Modifier.weight(1f))
+            ColorControls(viewModel)
         }
     } else {
         Column(modifier = Modifier.fillMaxSize()) {
-            ColorBox(backgroundColor, Modifier
-                .weight(1f)
-                .fillMaxWidth()
-                .padding(16.dp))
-            ColorControls(
-                red, green, blue,
-                redActive, greenActive, blueActive,
-                prevRed, prevGreen, prevBlue,
-                onReset = { resetValues() }
-            )
+            ColorBox(backgroundColor, Modifier.weight(1f))
+            ColorControls(viewModel)
         }
     }
 }
 
-@Composable
-fun ColorBox(color: Color, modifier: Modifier = Modifier) {
-    Box(
-        modifier = modifier
-            .clip(RoundedCornerShape(12.dp))
-            .border(3.dp, Color.Black, RoundedCornerShape(12.dp))
-            .background(color)
-    )
-}
+// Add Composables for ColorBox, ColorControls, ColorRow as you had before, but use viewModel.updateColor and viewModel.updateActive instead of local state.
 
-@Composable
-fun ColorControls(
-    red: MutableFloatState,
-    green: MutableFloatState,
-    blue: MutableFloatState,
-    redActive: MutableState<Boolean>,
-    greenActive: MutableState<Boolean>,
-    blueActive: MutableState<Boolean>,
-    prevRed: MutableFloatState,
-    prevGreen: MutableFloatState,
-    prevBlue: MutableFloatState,
-    onReset: () -> Unit
-) {
-    val context = LocalContext.current
-
-    Column(
-        modifier = Modifier
-            .padding(16.dp)
-            .verticalScroll(rememberScrollState()),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
-    ) {
-        ColorRow("Red", red, redActive, prevRed, context, Color.Red)
-        ColorRow("Green", green, greenActive, prevGreen, context, Color.Green)
-        ColorRow("Blue", blue, blueActive, prevBlue, context, Color.Blue)
-
-        Button(
-            onClick = onReset,
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(top = 24.dp)
-        ) {
-            Text("Reset")
-        }
-    }
-}
-
-@Composable
-fun ColorRow(
-    label: String,
-    value: MutableFloatState,
-    active: MutableState<Boolean>,
-    prev: MutableFloatState,
-    context: android.content.Context,
-    trackColor: Color
-) {
-    val textValue = remember { mutableStateOf(String.format(Locale.US, "%.2f", value.floatValue)) }
-
-    LaunchedEffect(value.floatValue) {
-        textValue.value = String.format(Locale.US, "%.2f", value.floatValue)
-    }
-
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        Box(
-            modifier = Modifier
-                .size(width = 52.dp, height = 32.dp)
-                .border(2.dp, Color.Black, RoundedCornerShape(20.dp)),
-            contentAlignment = Alignment.Center
-        ) {
-            Switch(
-                checked = active.value,
-                onCheckedChange = {
-                    active.value = it
-                    if (it) value.floatValue = prev.floatValue
-                    else {
-                        prev.floatValue = value.floatValue
-                        value.floatValue = 0f
-                    }
-                },
-                colors = SwitchDefaults.colors(
-                    checkedThumbColor = trackColor,
-                    checkedTrackColor = Color.White,
-                    uncheckedThumbColor = Color.LightGray,
-                    uncheckedTrackColor = Color.White
-                )
-            )
-        }
-
-        Slider(
-            value = value.floatValue,
-            onValueChange = {
-                value.floatValue = it
-                if (active.value) prev.floatValue = it
-            },
-            valueRange = 0f..1f,
-            steps = 100,
-            enabled = active.value,
-            modifier = Modifier.weight(1f),
-            colors = SliderDefaults.colors(
-                activeTrackColor = trackColor,
-                inactiveTrackColor = trackColor, // now matches solid color
-                thumbColor = trackColor
-            )
-        )
-
-        TextField(
-            value = textValue.value,
-            onValueChange = {
-                try {
-                    val num = it.toFloat()
-                    if (num in 0f..1f) {
-                        textValue.value = it
-                        value.floatValue = num
-                        if (active.value) prev.floatValue = num
-                    } else {
-                        Toast.makeText(context, "Enter value 0 to 1.0", Toast.LENGTH_SHORT).show()
-                    }
-                } catch (e: Exception) {
-                    Toast.makeText(context, "Invalid input", Toast.LENGTH_SHORT).show()
-                }
-            },
-            modifier = Modifier.width(80.dp),
-            enabled = active.value,
-            singleLine = true,
-            textStyle = LocalTextStyle.current.copy(color = if (active.value) Color.Black else Color.Gray)
-        )
-    }
-}
+// Example in ColorRow (pseudocode):
+// onValueChange = { viewModel.updateColor("red", newValue) }
+// onCheckedChange = { viewModel.updateActive("redActive", newState) }
