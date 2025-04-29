@@ -1,4 +1,4 @@
-// ✅ MainActivity.kt – Final Version with Framed ColorBox
+// ✅ MainActivity.kt – Final Version with Framed ColorBox and Switch Styling
 package com.example.newcolormaker
 
 import android.content.Context
@@ -11,6 +11,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
@@ -140,16 +141,9 @@ fun ColorMakerApp(viewModel: ColorViewModel) {
 
     val backgroundColor = Color(displayRed, displayGreen, displayBlue)
 
-    if (config.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE) {
-        Row(modifier = Modifier.fillMaxSize()) {
-            ColorBox(backgroundColor, Modifier.weight(1f))
-            ColorControls(viewModel)
-        }
-    } else {
-        Column(modifier = Modifier.fillMaxSize()) {
-            ColorBox(backgroundColor, Modifier.weight(1f))
-            ColorControls(viewModel)
-        }
+    Column(modifier = Modifier.fillMaxSize()) {
+        ColorBox(backgroundColor, Modifier.weight(1f))
+        ColorControls(viewModel)
     }
 }
 
@@ -158,7 +152,7 @@ fun ColorBox(color: Color, modifier: Modifier = Modifier) {
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .height(150.dp)
+            .height(180.dp)
             .padding(24.dp)
             .clip(RoundedCornerShape(24.dp))
             .border(width = 3.dp, color = Color.Black, shape = RoundedCornerShape(24.dp))
@@ -202,18 +196,27 @@ fun ColorRow(
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         modifier = Modifier.fillMaxWidth()
     ) {
-        Switch(
-            checked = isActive,
-            onCheckedChange = {
-                viewModel.updateActive("${label}Active", it)
-            },
-            colors = SwitchDefaults.colors(
-                checkedThumbColor = trackColor,
-                checkedTrackColor = Color.White,
-                uncheckedThumbColor = Color.LightGray,
-                uncheckedTrackColor = Color.White
+        Box(
+            modifier = Modifier
+                .size(32.dp)
+                .clip(CircleShape)
+                .background(if (isActive) trackColor else Color.LightGray)
+                .border(2.dp, Color.Black, CircleShape),
+            contentAlignment = Alignment.Center
+        ) {
+            Switch(
+                checked = isActive,
+                onCheckedChange = {
+                    viewModel.updateActive("${label}Active", it)
+                },
+                colors = SwitchDefaults.colors(
+                    checkedThumbColor = Color.White,
+                    checkedTrackColor = Color.Transparent,
+                    uncheckedThumbColor = Color.White,
+                    uncheckedTrackColor = Color.Transparent
+                )
             )
-        )
+        }
 
         Slider(
             value = currentValue,
